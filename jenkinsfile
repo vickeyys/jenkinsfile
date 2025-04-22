@@ -1,0 +1,37 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'branch', choices: ['master', 'rel_1'], description: 'pick-something')
+    }
+
+    tools {
+        jdk 'jdk8'
+    }
+
+    stages {
+        stage('git checkout') {
+            steps {
+                git branch: "${params.branch}", url: 'https://github.com/vickeyys/game-of-life.git', credentialsId: 'github-id'
+            }
+        }
+        stage('mvn package') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('deploy'){
+            steps{
+                echo "deploying on $NODE_NAME"
+            }
+        }
+        stage('build details'){
+            steps{
+               echo "job name is $JOB_NAME"
+               echo "build number is $BUILD_NUMBER"
+               echo "build url is $BUILD_URL"
+            }
+        }
+    }
+}
+
