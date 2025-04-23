@@ -1,0 +1,26 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "this is acitvity for vpc with two subnet",
+    "Resources": {
+        "vpc1": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "192.168.0.0/16",
+                "EnableDnsHostnames": true,
+                "EnableDnsSupport": true,
+                "Tags": [{"Key": "Name", "Value": "myvpc1"}]
+            }
+        },
+        "websubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": "192.168.0.0/24",
+                "Tags": [{"Key": "Name", "Value": "websubnet"}],
+                "VpcId": {
+                    "Ref": "vpc1"
+                },
+                "AvailabilityZone": "us-east-1a"
+            }
+        }
+    }
+}
