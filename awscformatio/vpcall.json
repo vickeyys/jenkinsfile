@@ -1,0 +1,145 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "this is all vpc component configuration",
+    "Parameters":{
+        "vpccidr": {
+            "Type": "String",
+            "Default": "192.168.0.0/16"
+        },
+        "subnetcidrs":{
+        "Type": "CommaDelimitedList",
+        "Default": "192.168.0.0/24,192.168.1.0/24,192.168.2.0/24"
+        },
+        "zone1":{
+            "Type": "AWS::EC2::AvailabilityZone::Name"
+        },
+        "zone2":{
+            "Type": "AWS::EC2::AvailabilityZone::Name"
+        },
+        "zone3":{
+            "Type": "AWS::EC2::AvailabilityZone::Name"
+        }
+    },
+    "Resources":{
+        "vpc1":{
+            "Type": "AWS::EC2::VPC",
+            "Properties":{
+                "CidrBlock": {"Ref": "vpccidr"},
+                "Tags": [{"Key": "Name", "Value": "myvpc1"}]
+            }
+        },
+        "websubnet":{
+            "Type": "AWS::EC2::Subnet",
+            "Properties":{
+                "CidrBlock": {
+                    "Fn::Select": [0, {"Ref": "subnetcidrs"}]
+                },
+                "AvailabilityZone": {"Ref": "zone1"},
+                "VpcId": {"Ref": "vpc1"},
+                "Tags": [{"Key":"Name", "Value": "websubnet"}]
+            }
+        },
+        "appsubnet":{
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock":{
+                    "Fn::Select": [1, {"Ref": "subnetcidrs"}]
+
+                },
+                "AvailabilityZone":{"Ref":"zone2"},
+                "VpcId": {"Ref":"vpc1"},
+                "Tags": [{"Key": "Name", "Value": "appsubnet"}]
+            }
+        },
+        "dbsubnet":{
+            "Type":"AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Fn::Select": [2, {"Ref": "subnetcidrs"}]
+                },
+                "AvailabilityZone": {"Ref": "zone3"},
+                "VpcId": {"Ref": "vpc1"},
+                "Tags": [{"Key":"Name", "Value": "dbsubnet"}]
+            }
+        },
+        "igwnew": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties":{
+                "Tags": [{"Key":"Name", "Value": "myigw"}]
+            }
+        },
+        "igwattach":{
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties":{
+                "InternetGatewayId": {"Ref": "igwnew"},
+                "VpcId": {"Ref": "vpc1"}
+            }
+        },
+        "publicrt": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties":{
+                "VpcId": {"Ref": "vpc1"},
+                "Tags": [{"Key":"Name", "Value": "publicrt"}]
+            }
+        },
+        "route":{
+            "Type": "AWS::EC2::Route",
+            "Properties":{
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {"Ref": "igwnew"},
+                "RouteTableId": {"Ref": "publicrt"}
+            }
+        },
+        "routetablesubnetassociation":{
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties":{
+                "SubnetId": {"Ref": "websubnet"},
+                "RouteTableId": {"Ref": "publicrt"}
+            }
+        },
+        "websg": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties":{
+                "GroupDescription": "This is web sg",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 22,
+                        "ToPort": 22,
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "icmp",
+                        "FromPort": -1,
+                        "ToPort": -1,
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "VpcId": {"Ref": "vpc1"},
+                "Tags": [{"Key":"Name", "Value": "websg"}]
+            }
+        },
+        "appsg": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "This is app sg",
+                "SecurityGroupIngress":[
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8080",
+                        "ToPort": "8080",
+                        "CidrIp":"0.0.0.0/0"
+                    }
+                ],
+                "VpcId": {"Ref": "vpc1"},
+                "Tags": [{"Key": "Name", "Value": "appsg"}]
+            }
+        }
+    }
+}
