@@ -17,6 +17,8 @@ pipeline {
 
     post {
         success {
+            junit '**/surefire-reports/*.xml'
+
             mail(
                 subject: "Build #${env.BUILD_NUMBER} Successful",
                 body: "The build ${env.JOB_NAME} #${env.BUILD_NUMBER} completed successfully.\nCheck it here: ${env.BUILD_URL}",
@@ -33,4 +35,3 @@ pipeline {
         }
     }
 }
-
