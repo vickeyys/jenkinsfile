@@ -1,0 +1,113 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "in this acitvity we have created vpc with three subnet with parameters for cidr",
+    "Parameters": {
+        "vpccidr": {
+            "Type": "String",
+            "Default": "192.168.0.0/16"
+        },
+        "subnetcidr": {
+            "Type": "CommaDelimitedList",
+            "Default": "192.168.0.0/24, 192.168.1.0/24, 192.168.2.0/24"
+        },
+        "zone1": {
+            "Description": "this is availbilityzone-1",
+            "Type": "AWS::EC2::AvailabilityZone::Name"
+        },
+        "zone2": {
+            "Description": "this is availability zone2",
+            "Type": "AWS::EC2::AvailabilityZone::Name"
+        }
+    },
+    "Resources": {
+        "vpc1": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "vpccidr"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "myvpc"
+                    }
+                ]
+            }
+        },
+        "websubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Ref": "subnetcidr"
+                        }
+                    ]
+                },
+                "AvailabilityZone": {
+                    "Ref": "zone1"
+                },
+                "VpcId": {
+                    "Ref": "vpc1"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "websubnet"
+                    }
+                ]
+            }
+        },
+        "appsubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Ref": "subnetcidr"
+                        }
+                    ]
+                },
+                "AvailabilityZone": {
+                    "Ref": "zone2"
+                },
+                "VpcId": {
+                    "Ref": "vpc1"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "appsubnet"
+                    }
+                ]
+            }
+        },
+        "dbsubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Fn::Select": [
+                        2,
+                        {
+                            "Ref": "subnetcidr"
+                        }
+                    ]
+                },
+                "AvailabilityZone": {
+                    "Ref": "zone2"
+                },
+                "VpcId": {
+                    "Ref": "vpc1"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "dbsubnet"
+                    }
+                ]
+            }
+        }
+    }
+}
