@@ -1,0 +1,66 @@
+pipeline {
+    agent {
+        label 'node1'
+    }
+    parameters {
+        choice(name: 'branch', choices: ['master', 'rel_1'], description: 'pick something')
+        string(name: 'MAVEN_GOAL', defaultValue: 'clean install', description: 'Maven goal')
+    }
+    tools {
+        jdk 'jdk8'
+        maven 'maven-3.6.3'
+    }
+    stages {
+        stage('vcs') {
+            steps {
+                git branch: "${params.branch}", 
+                    url: 'https://github.com/vickeyys/game-of-life.git'
+            }
+        }
+        stage('mvn package') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('deploy') {
+            steps {
+                echo "deploying on $NODE_NAME"
+            }
+        }
+        stage('ArtifactoryConfiguration') {
+            steps {
+                script {
+                    rtServer(
+                        id: "javamaven",     // <-- **fix: small i to small "id"** 
+                        url: "https://vickeyy.jfrog.io/",
+                        credentialsId: "jforg-id"
+                    )
+                    rtMavenDeployer(
+                        id: "Maven_Deployer",
+                        serverId: "javamaven",
+                        releaseRepo: "vickey-repo-libs-release",   // <-- **don't add BUILD_NUMBER here**
+                        snapshotRepo: "vickey-repo-libs-snapshot"
+                    )
+                }
+            }
+        }
+        stage('exec maven') {
+            steps {
+                rtMavenRun(
+                    tool: 'maven-3.6.3',
+                    pom: 'pom.xml',
+                    goals: "${params.MAVEN_GOAL}",
+                    deployerId: "Maven_Deployer"
+                )
+            }
+        }
+        stage('publish build info') {
+            steps {
+                rtPublishBuildInfo(
+                    serverId: "javamaven"
+                )
+            }
+        }
+    }
+}
+
