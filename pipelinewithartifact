@@ -1,0 +1,52 @@
+pipeline {
+    agent {
+        label 'node1'
+    }
+    parameters {
+        choice(name: 'branch', choices: ['master', 'rel_1'], description: 'pick something')
+    }
+    tools {
+        jdk 'jdk8'
+        maven 'maven-3.6.3'
+    }
+    stages {
+        stage('vcs') {
+            steps {
+                git branch: "${params.branch}", 
+                    url: 'https://github.com/vickeyys/game-of-life.git'
+            }
+        }
+        stage('mvn package') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('deploy') {
+            steps {
+                echo "deploying on $NODE_NAME"
+            }
+        }
+        stage('upload to artifactory') {
+            steps {
+                script {
+                    rtUpload(
+                        serverId: 'javamaven',
+                        spec: '''{
+                            "files": [
+                                {
+                                    "pattern": "gameoflife-web/target/*.war",
+                                    "target": "vickey-repo-libs-release/${BUILD_NUMBER}/"
+                                },
+                                {
+                                    "pattern": "gameoflife-build/target/*.jar",
+                                    "target":   "vickey-repo-libs-snapshot/${BUILD_NUMBER}/"
+                                }
+                            ]
+                        }'''
+                    )
+                }
+            }
+        }
+    }
+}
+
