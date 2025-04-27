@@ -1,0 +1,64 @@
+pipeline {
+    agent any
+    parameters {
+        choice(name: 'branch', choices: ['master', 'rel_1'], description: 'Pick something')
+        string(name: 'MAVEN_GOAL', defaultValue: 'clean install', description: 'Maven goal')
+    }
+    tools {
+        jdk 'jdk8'
+        maven 'maven-3.6.3'
+    }
+    stages {
+        stage('vcs') {
+            steps {
+                git branch: "${params.branch}", 
+                    url: 'https://github.com/vickeyys/game-of-life.git'
+            }
+        }
+        stage('mvn package') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('deploy') {
+            steps {
+                echo "Deploying on $NODE_NAME"
+            }
+        }
+        stage('ArtifactoryConfiguration') {
+            steps {
+                script {
+                    rtServer(
+                        id: "repo-server",
+                        url: "https://techlearner.jfrog.io/artifactory/",
+                        credentialsId: "jfrog-id" // <-- removed extra space
+                    )
+                    rtMavenDeployer(
+                        id: "Maven_Deployer",
+                        serverId: "repo-server",
+                        releaseRepo: 'devops-libs-release', // <-- only repo name, no URL
+                        snapshotRepo: 'devops-libs-snapshot'
+                    )
+                }
+            }
+        }
+        stage('exec maven') {
+            steps {
+                rtMavenRun(
+                    tool: 'maven-3.6.3',
+                    pom: 'pom.xml',
+                    goals: "${params.MAVEN_GOAL}",
+                    deployerId: "Maven_Deployer"
+                )
+            }
+        }
+        stage('publish build info') {
+            steps {
+                rtPublishBuildInfo(
+                    serverId: "repo-server"
+                )
+            }
+        }
+    }
+}
+
