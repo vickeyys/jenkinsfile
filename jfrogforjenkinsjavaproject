@@ -1,0 +1,61 @@
+pipeline{
+    agent {
+        label 'node1'
+    }
+    tools{
+        jdk 'jdk8'
+    }
+    parameters{
+        string(name: 'MAVEN_GOAL', defaultValue: 'clean install', description: 'Maven goal')
+    }
+    stages{
+        stage('vcs'){
+            steps{
+                git branch: 'master',
+                url: 'https://github.com/vickeyys/jenkins-java-project-1.git'
+            }
+        }
+        stage('maven package'){
+           steps{
+                sh 'mvn clean package'
+           }
+        }
+        stage('ArtifactoryConfiguration'){
+            steps{
+                script{
+                    rtServer(
+                        id: "repo-server",
+                        url: "https://techlearner.jfrog.io/artifactory/",
+                        credentialsId: "jfrog-id"
+                    )
+                    rtMavenDeployer(
+                        id: "Maven_Deployer",
+                        serverId: "repo-server",
+                        releaseRepo: 'techi-libs-release', // <-- only repo name, no URL
+                        snapshotRepo: 'techi-libs-snapshot',
+                        artifactDeploymentPatterns: [
+                            "**/* => ${env.BUILD_NUMBER}/"
+                        ]
+                    )
+                }
+            }
+        }
+        stage('exec maven'){
+            steps{
+                rtMavenRun(
+                    tool: 'maven-3.6.3',
+                    pom: 'pom.xml',
+                    goals: "${params.MAVEN_GOAL}",
+                    deployerId: "Maven_Deployer"
+                )
+            }
+        }
+        stage('publish build infor'){
+            steps{
+                rtPublishBuildInfo(
+                    serverId: "repo-server"
+                )
+            }
+        }
+    }
+}
