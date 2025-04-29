@@ -1,0 +1,76 @@
+pipeline {
+    agent 'any'
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
+        PATH = "${JAVA_HOME}/bin:${PATH}"
+    }
+    parameters {
+        string(name: 'MAVEN_GOAL', defaultValue: 'clean install', description: 'maven goal')
+    }
+    stages {
+        stage('vcs') {
+            steps {
+                git url: 'https://github.com/vickeyys/jenkins-java-project.git'
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SONAR_SELF_HOSTED') {
+                    sh script: 'mvn clean verify sonar:sonar'
+                }
+            }
+        }
+        stage('ArtifactoryConfiguration') {
+            steps {
+                script {
+                    rtServer(
+                        id: "repo-server",
+                        url: "https://techlearner.jfrog.io/artifactory/",
+                        credentialsId: "jfrog-cred"
+                    )
+                    rtMavenDeployer(
+                        id: "Maven_Deployer",
+                        serverId: "repo-server",
+                        releaseRepo: 'techi-libs-release',
+                        snapshotRepo: 'techi-libs-snapshot'
+                    )
+                }
+            }
+        }
+        stage('exec maven') {
+            steps {
+                rtMavenRun(
+                    tool: 'maven-3.6.3',
+                    pom: 'pom.xml',
+                    goals: "${params.MAVEN_GOAL}",
+                    deployerId: "Maven_Deployer"
+                )
+            }
+        }
+        stage('publish build info') {
+            steps {
+                rtPublishBuildInfo(
+                    serverId: "repo-server"
+                )
+            }
+        }
+    }
+    post {
+        success {
+            junit '**/surefire-reports/*.xml'
+            mail(
+                subject: "Build #${env.BUILD_NUMBER} Successful",
+                body: "The build ${env.JOB_NAME} #${env.BUILD_NUMBER} completed successfully.\nCheck it here: ${env.BUILD_URL}",
+                to: 'vickeybhargave007@gmail.com'
+            )
+        }
+        failure {
+            mail(
+                subject: "Build #${env.BUILD_NUMBER} Failed",
+                body: "The build ${env.JOB_NAME} #${env.BUILD_NUMBER} has failed.\nCheck it here: ${env.BUILD_URL}",
+                to: 'vickeybhargave007@gmail.com'
+            )
+        }
+    }
+}
+
