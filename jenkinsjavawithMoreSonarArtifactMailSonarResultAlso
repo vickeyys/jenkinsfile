@@ -4,8 +4,8 @@ pipeline {
     environment {
         JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
         PATH = "${JAVA_HOME}/bin:${PATH}"
-        SONARQUBE_URL = 'http://52.86.13.123:9000'
-        PROJECT_KEY = 'org.springframework.samples:spring-petclinic'
+        SONARQUBE_URL = 'http://52.86.13.123:9000' //change according to your url
+        PROJECT_KEY = 'org.springframework.samples:spring-petclinic' //change according to your project key
         SONARQUBE_ANALYSIS_URL = "${SONARQUBE_URL}/project/issues?id=${PROJECT_KEY}"
     }
 
