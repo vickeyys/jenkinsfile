@@ -1,0 +1,90 @@
+pipeline{
+    agent 'any'
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
+        PATH = "${JAVA_HOME}/bin:${PATH}"
+        SONARQUBE_URL = 'http://52.86.13.123:9000'
+        PROJECT_KEY = 'org.springframework.samples:spring-petclinic'
+        SONARQUBE_ANALYSIS_URL = "${SONARQUBE_URL}/project/issues?id=${PROJECT_KEY}"
+    }
+    parameters {
+        choice name: 'MAVEN_GOAL', 
+               choices: ['clean install', 'compile', 'test'], 
+               description: 'Choose the Maven goal to execute'
+    }
+    stages{
+        stage('vcs'){
+            steps{
+                git branch: 'main', 
+                url: 'https://github.com/vickeyys/spring-petclinic.git'
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SONAR_SELF_HOSTED') {
+                    sh script: 'mvn clean verify sonar:sonar'
+                }
+            }
+        }
+        stage('ArtifactConfiguration'){
+            steps{
+                script{
+                    rtServer(
+                        id: "repo-server",
+                        url: "https://techlearner.jfrog.io/artifactory/",
+                        credentialsId: "jfrog-cred"
+                    )
+                    rtMavenDeployer(
+                        id: "Maven_Deployer",
+                        serverId: "repo-server",
+                        releaseRepo: "devops-libs-release",
+                        snapshotRepo: "devops-libs-snapshot"
+                    )
+                }
+            }
+        }
+        stage('exec maven'){
+            steps{
+                rtMavenRun(
+                    tool: "maven-3.6.3",
+                    pom: "pom.xml",
+                    deployerId: "Maven_Deployer",
+                    goals: "${params.MAVEN_GOAL}"
+                )
+            }
+        }
+        stage('rtpublish'){
+            steps{
+                rtPublishBuildInfo(
+                    serverId: "repo-server"
+                )
+            }
+        }
+    }
+     post {
+        success {
+            junit '**/surefire-reports/*.xml'
+            mail(
+                subject: "Build #${env.BUILD_NUMBER} Successful",
+                body: """
+                    The build ${env.JOB_NAME} #${env.BUILD_NUMBER} completed successfully.
+                    SonarQube report: ${env.SONARQUBE_ANALYSIS_URL}
+                    Jenkins URL: ${env.BUILD_URL}
+                """,
+                to: 'vickeybhargave007@gmail.com'
+            )
+        }
+        failure {
+            mail(
+                subject: "Build #${env.BUILD_NUMBER} Failed",
+                body: """
+                    The build ${env.JOB_NAME} #${env.BUILD_NUMBER} has failed.
+                    SonarQube report: ${env.SONARQUBE_ANALYSIS_URL}
+                    Jenkins URL: ${env.BUILD_URL}
+                """,
+                to: 'vickeybhargave007@gmail.com'
+            )
+        }
+    }
+}
+
