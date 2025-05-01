@@ -1,0 +1,146 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Deploy EC2 in selected AZ with dropdown options for env, AMI, etc.",
+    "Parameters": {
+      "zone1": {
+        "Description": "AZ1",
+        "Type": "AWS::EC2::AvailabilityZone::Name"
+      },
+      "zone2": {
+        "Description": "AZ2",
+        "Type": "AWS::EC2::AvailabilityZone::Name"
+      },
+      "vpccidr": {
+        "Type": "String",
+        "Default": "192.168.0.0/16"
+      },
+      "subnetcidrs": {
+        "Type": "CommaDelimitedList",
+        "Default": "192.168.0.0/24,192.168.1.0/24,192.168.2.0/24"
+      },
+      "Environment": {
+        "Type": "String",
+        "Description": "Environment (dev or prod)",
+        "AllowedValues": ["dev", "prod"],
+        "Default": "dev"
+      },
+      "AmiIds": {
+        "Type": "String",
+        "AllowedValues": ["ami-084568db4383264d4", "ami-0d61ea20f09848335"],
+        "Default": "ami-084568db4383264d4"
+      },
+      "KeyPair": {
+        "Type": "String",
+        "AllowedValues": ["project", "my"]
+      }
+    },
+    "Mappings": {
+      "RegionMap": {
+        "us-east-1": { "InstanceType": "t2.micro" },
+        "us-west-1": { "InstanceType": "t2.micro" },
+        "eu-west-1": { "InstanceType": "t2.micro" },
+        "eu-north-1": { "InstanceType": "t3.micro" },
+        "me-south-1": { "InstanceType": "t3.micro" }
+      }
+    },
+    "Resources": {
+      "myvpc": {
+        "Type": "AWS::EC2::VPC",
+        "Properties": {
+          "CidrBlock": { "Ref": "vpccidr" },
+          "Tags": [{ "Key": "Name", "Value": "vpc1" }]
+        }
+      },
+      "subnet1": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "CidrBlock": {
+            "Fn::Select": [0, { "Ref": "subnetcidrs" }]
+          },
+          "AvailabilityZone": { "Ref": "zone1" },
+          "VpcId": { "Ref": "myvpc" },
+          "Tags": [{ "Key": "Name", "Value": "websubnet" }]
+        }
+      },
+      "subnet2": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "CidrBlock": {
+            "Fn::Select": [1, { "Ref": "subnetcidrs" }]
+          },
+          "AvailabilityZone": { "Ref": "zone2" },
+          "VpcId": { "Ref": "myvpc" },
+          "Tags": [{ "Key": "Name", "Value": "appsubnet" }]
+        }
+      },
+      "websg": {
+        "Type": "AWS::EC2::SecurityGroup",
+        "Properties": {
+          "GroupDescription": "Web security group",
+          "VpcId": { "Ref": "myvpc" },
+          "SecurityGroupIngress": [
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 80,
+              "ToPort": 80,
+              "CidrIp": "0.0.0.0/0"
+            },
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 22,
+              "ToPort": 22,
+              "CidrIp": "0.0.0.0/0"
+            },
+            {
+              "IpProtocol": "icmp",
+              "FromPort": -1,
+              "ToPort": -1,
+              "CidrIp": "0.0.0.0/0"
+            }
+          ],
+          "Tags": [{ "Key": "Name", "Value": "websg" }]
+        }
+      },
+      "webserver": {
+        "Type": "AWS::EC2::Instance",
+        "Properties": {
+          "ImageId": { "Ref": "AmiIds" },
+          "InstanceType": {"Fn::FindInMap": ["RegionMap",{ "Ref": "AWS::Region" },"InstanceType"]},
+          "KeyName": { "Ref": "KeyPair" },
+          "NetworkInterfaces": [
+            {
+              "AssociatePublicIpAddress": true,
+              "DeviceIndex": 0,
+              "SubnetId": { "Ref": "subnet1" },
+              "GroupSet": [{ "Ref": "websg" }]
+            }
+          ],
+          "UserData": {
+            "Fn::Base64": {
+              "Fn::Join": [
+                "\n",
+                [
+                  "#!/bin/bash",
+                  "sudo apt update -y",
+                  "sudo apt install -y apache2",
+                  "sudo systemctl start apache2",
+                  "sudo systemctl enable apache2",
+                  "echo '<html><h1>Welcome to My Web Server</h1></html>' > /var/www/html/index.html"
+                ]
+              ]
+            }
+          },
+          "Tags": [{ "Key": "Name", "Value": "webserver" }]
+        }
+      }
+    },
+    "Outputs": {
+      "WebServerPublicIP": {
+        "Description": "Public IP of the web server",
+        "Value": {
+          "Fn::GetAtt": ["webserver", "PublicIp"]
+        }
+      }
+    }
+  }
+  
