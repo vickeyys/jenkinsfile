@@ -1,0 +1,18 @@
+---
+- hosts: app
+  become: true
+  tasks:
+    - name: here we install httpd
+      ansible.builtin.shell: "yum install httpd -y"
+    - name: start httpd
+      ansible.builtin.shell: "systemctl start httpd"
+    - name: enable httpd
+      ansible.builtin.shell:  "systemctl enable httpd"
+    - name: here we copy the index.html to desired location
+      ansible.builtin.copy:
+        src: index.html
+        dest: /var/www/html
+        owner: root
+        group: root
+        mode: 0644
+
