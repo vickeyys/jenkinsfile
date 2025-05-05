@@ -1,0 +1,60 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "this is ec2 stack",
+    "Parameters": {
+      "AmiId": {
+        "Type": "String"
+      },
+      "KeyPair": {
+        "Type": "String"
+      },
+      "InstanceType": {
+        "Type": "String"
+      },
+      "SubnetId": {
+        "Type": "String"
+      },
+      "SecurityGroupId": {
+        "Type": "String"
+      }
+    },
+    "Resources": {
+      "webserver": {
+        "Type": "AWS::EC2::Instance",
+        "Properties": {
+          "InstanceType": { "Ref": "InstanceType" },
+          "ImageId": { "Ref": "AmiId" },
+          "KeyName": { "Ref": "KeyPair" },
+          "NetworkInterfaces": [
+            {
+              "AssociatePublicIpAddress": true,
+              "DeviceIndex": 0,
+              "SubnetId": { "Ref": "SubnetId" },
+              "GroupSet": [ { "Ref": "SecurityGroupId" } ]
+            }
+          ],
+          "UserData": {
+            "Fn::Base64": {
+              "Fn::Join": [
+                "\n",
+                [
+                  "#!/bin/bash",
+                  "sudo apt update -y",
+                  "sudo apt install -y apache2",
+                  "sudo systemctl start apache2",
+                  "sudo systemctl enable apache2",
+                  "echo '<html><h1>Welcome to My Web Server</h1></html>' > /var/www/html/index.html"
+                ]
+              ]
+            }
+          }
+        }
+      }
+    },
+    "Outputs": {
+      "WebServerPublicIP": {
+        "Value": { "Fn::GetAtt": [ "webserver", "PublicIp" ] }
+      }
+    }
+  }
+  

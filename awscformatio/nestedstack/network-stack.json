@@ -1,0 +1,43 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "this is main file for nested stack",
+    "Parameters": {
+      "vpccidr": { "Type": "String" },
+      "subnetcidrs": { "Type": "CommaDelimitedList" },
+      "zone1": { "Type": "String" },
+      "zone2": { "Type": "String" }
+    },
+    "Resources": {
+      "MyVpc": {
+        "Type": "AWS::EC2::VPC",
+        "Properties": {
+          "CidrBlock": { "Ref": "vpccidr" },
+          "Tags": [{ "Key": "Name", "Value": "vpc1" }]
+        }
+      },
+      "subnet1": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "CidrBlock": { "Fn::Select": [0, { "Ref": "subnetcidrs" }] },
+          "VpcId": { "Ref": "MyVpc" },
+          "AvailabilityZone": { "Ref": "zone1" },
+          "Tags": [{ "Key": "Name", "Value": "subnet1" }]
+        }
+      },
+      "subnet2": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "CidrBlock": { "Fn::Select": [1, { "Ref": "subnetcidrs" }] },
+          "VpcId": { "Ref": "MyVpc" },
+          "AvailabilityZone": { "Ref": "zone2" },
+          "Tags": [{ "Key": "Name", "Value": "subnet2" }]
+        }
+      }
+    },
+    "Outputs": {
+      "VpcId": { "Value": { "Ref": "MyVpc" } },
+      "Subnet1": { "Value": { "Ref": "subnet1" } },
+      "Subnet2": { "Value": { "Ref": "subnet2" } }
+    }
+  }
+  

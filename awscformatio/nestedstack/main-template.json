@@ -1,0 +1,134 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "this is main file for nested stack",
+    "Parameters": {
+        "zone1": {
+            "Description": "this is zone1",
+            "Type": "String"
+        },
+        "zone2": {
+            "Description": "this is zone2",
+            "Type": "String"
+        },
+        "vpccidr": {
+            "Type": "String",
+            "Default": "192.168.0.0/16"
+        },
+        "subnetcidrs": {
+            "Type": "CommaDelimitedList", //is used to declare a parameter that accepts multiple values separated by commas.
+            "Default": "192.168.0.0/24,192.168.1.0/24,192.168.2.0/24"
+        },
+        "Environment": {
+            "Type": "String",
+            "Description": "select the proper env",
+            "AllowedValues": [
+                "dev",
+                "prod"
+            ],
+            "Default": "dev"
+        },
+        "AmiId": {
+            "Type": "String",
+            "AllowedValues": [
+                "ami-084568db4383264d4",
+                "ami-0d61ea20f09848335"
+            ],
+            "Default": "ami-084568db4383264d4"
+        },
+        "KeyPair": {
+            "Type": "String",
+            "AllowedValues": [
+                "project",
+                "my"
+            ],
+            "Default": "project"
+        }
+    },
+    "Mappings": {
+        "RegionMap": {
+            "us-east-1": {
+                "InstanceType": "t2.micro"
+            },
+            "us-west-1": {
+                "InstanceType": "t2.medium"
+            }
+        }
+    },
+    "Resources": {
+        "NetworkStack": {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": "https://nestedtemplating.s3.us-east-1.amazonaws.com/network-stack.json",
+                "Parameters": {
+                    "zone1": {
+                        "Ref": "zone1"
+                    },
+                    "zone2": {
+                        "Ref": "zone2"
+                    },
+                    "vpccidr": {
+                        "Ref": "vpccidr"
+                    },
+                    "subnetcidrs": {
+                        "Fn::Join": [
+                            ",",
+                            {
+                                "Ref": "subnetcidrs"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+
+      "SecurityStack": {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": "https://nestedtemplating.s3.us-east-1.amazonaws.com/security-stack.json",
+                "Parameters": {
+                    "VpcId": {
+                        "Fn::GetAtt": [
+                            "NetworkStack",
+                            "Outputs.VpcId"
+                        ]
+                    }
+                }
+            }
+        },
+        "EC2Stack": {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": "https://nestedtemplating.s3.us-east-1.amazonaws.com/ec2-stack.json",
+                "Parameters": {
+                    "AmiId": {
+                        "Ref": "AmiId"
+                    },
+                    "KeyPair": {
+                        "Ref": "KeyPair"
+                    },
+                    "InstanceType": {
+                        "Fn::FindInMap": [
+                            "RegionMap",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            "InstanceType"
+                        ]
+                    },
+                    "SubnetId": {
+                        "Fn::GetAtt": [
+                            "NetworkStack",
+                            "Outputs.Subnet1"
+                        ]
+                    },
+                    "SecurityGroupId": {
+                        "Fn::GetAtt": [
+                            "SecurityStack",
+                            "Outputs.websg"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
