@@ -1,0 +1,36 @@
+\\ for this we are taking examples of the file MapAndOutputs.json
+pipeline {
+    agent any
+
+    environment {
+        TEMPLATE_FILE = '/var/lib/jenkins/cloudformation/template.json'
+        STACK_NAME = 'MapAndOutputs'
+        AWS_REGION = 'us-east-1'
+    }
+
+    stages {
+        stage('StackDeployment') {
+            environment {
+                AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
+                AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+            }
+            steps {
+                sh """
+                    aws cloudformation deploy \
+                    --region $AWS_REGION \
+                    --template-file $TEMPLATE_FILE \
+                    --stack-name $STACK_NAME \
+                    --parameter-overrides \
+                        zone1=us-east-1a \
+                        zone2=us-east-1b \
+                        vpccidr=192.168.0.0/16 \
+                        subnetcidrs=192.168.0.0/24,192.168.1.0/24,192.168.2.0/24 \
+                        Environment=dev \
+                        AmiIds=ami-084568db4383264d4 \
+                        KeyPair=project \
+                    --capabilities CAPABILITY_NAMED_IAM
+                """
+            }
+        }
+    }
+}
