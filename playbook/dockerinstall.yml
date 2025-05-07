@@ -1,0 +1,27 @@
+---
+- hosts: all
+  become: true
+  tasks:
+
+  - name: Update and upgrade apt packages
+    ansible.builtin.shell: apt update && apt upgrade -y
+
+  - name: Install security packages
+    ansible.builtin.apt:
+      name: "{{ item }}"
+      state: latest
+    loop:
+      - apache2
+      - openssl
+    ignore_errors: yes
+
+  - name: Check if Docker is installed
+    ansible.builtin.command: docker --version
+    register: output
+    ignore_errors: yes
+
+  - name: Install Docker if not present
+    ansible.builtin.apt:
+      name: docker.io
+      state: present
+    when: output.failed
