@@ -1,0 +1,69 @@
+- hosts: all
+  become: yes
+  vars:
+    common_packages:
+      - git
+      - maven
+      - tree
+      - apache2
+    security_packages:
+      - openssl
+      - openssh
+
+  tasks:
+    - name: Install common packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ common_packages }}"
+
+    - name: Start and enable apache2
+      ansible.builtin.service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: Copy the index.html to web root
+      ansible.builtin.copy:
+        src: index.html
+        dest: /var/www/html
+        owner: root
+        mode: '0655'
+
+    - name: Ensure latest security packages are installed
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: latest
+      loop: "{{ security_packages }}"
+      ignore_errors: yes
+
+    - name: Check if Docker is installed
+      ansible.builtin.command: docker --version
+      register: output
+      ignore_errors: yes
+
+    - name: Install Docker if not installed
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+      when: output.failed
+    - name: create some users with groups
+      ansible.builtin.user:
+        name: "{{item.name}}"
+        groups: "{{item.group}}"
+        state: present
+      loop:
+        - name: "sai"
+          group: "root"
+        - name: "ram"
+          group: "ram"
+    - name: show the items with their index
+      debug:
+        msg: Cricketer "{{cricketer_index}}" is "{{item}}"
+      loop:
+        - "sachin"
+        - "yuvraj"
+        - "dhoni"
+        - "virat"
+      loop_control:
+        index_var: cricketer_index
