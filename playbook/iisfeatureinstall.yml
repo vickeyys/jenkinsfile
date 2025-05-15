@@ -1,0 +1,33 @@
+--- 
+- name: installation of iis server with its features and index.html file
+  hosts: all 
+  tasks:
+    - name: install IIS and its features
+      ansible.builtin.win_feature:
+          name: Web-Server
+          state: present 
+          include_sub_features: yes
+          restart: yes
+    - name: create directory for website1
+      ansible.builtin.win_file:
+          path: C:\inetpub\website1
+          state: directory
+    - name: copy the code 
+      ansible.builtin.win_copy:
+          src: /root/index.html
+          dest: C:\inetpub\website1\index.html
+    - name: add website1 
+      ansible.builtin.win_iis_website:
+          name: website1
+          state: started
+          port: 81
+          physical_path: C:\inetpub\website1
+          hostname: ''
+          ip: '*'
+    - name: start and enabled IIS service
+      ansible.builtin.win_service:
+          name: W3SVC
+          start_mode: auto
+          state: started
+  
+
