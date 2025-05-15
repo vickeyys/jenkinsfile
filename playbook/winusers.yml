@@ -1,0 +1,22 @@
+---
+- name: Create users for Windows machines
+  hosts: all
+  vars:
+    password: 'vickeyraj@123#'
+    users:
+      - name: test1
+        groups: ['Users']
+      - name: test2
+        groups: ['Users']
+
+  tasks:
+    - name: Create users
+      win_user:
+        name: "{{ item.name }}"
+        password: "{{ password }}"
+        groups: "{{ item.groups }}"
+        password_never_expires: yes
+        user_cannot_change_password: no
+        account_disabled: no
+        state: present
+      loop: "{{ users }}"
