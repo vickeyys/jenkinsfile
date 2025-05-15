@@ -1,0 +1,10 @@
+[windows]
+172.31.16.206
+
+[windows:vars]
+ansible_user=Administrator
+ansible_password=SkFiBc.67lTQe!kbz(z!Jv@mW%S%=c=v
+ansible_connection=winrm
+ansible_winrm_transport=ntlm
+ansible_winrm_server_cert_validation=ignore
+ansible_port=5985
