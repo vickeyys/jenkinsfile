@@ -1,0 +1,22 @@
+---
+- name: open firewall ports on windows
+  hosts: windows
+  gather_facts: no
+  vars:
+    ports: 
+      - name: RDP
+        port: 3389
+      - name: HTTP
+        port: 80
+      - name: HTTPS 
+        port: 443
+  tasks:
+    - name: open ports
+      ansible.builtin.win_firewall_rule:
+        name: "{{item.name}}"
+        localport: "{{item.port}}"
+        protocol: tcp 
+        action: allow 
+        direction: in 
+        state: present
+      loop: "{{ports}}"   
