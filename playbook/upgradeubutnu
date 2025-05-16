@@ -1,0 +1,13 @@
+// this is process to upgrade ubuntu
+apt update && apt upgrade -y
+apt install update-manager-core
+vim /etc/update-manager/release-upgrades // in this just check the entry should be there Prompt=lts
+do-release-upgrade -d
+
+//this is process to upgrade amazon linux
+cat /etc/os-release  //know your current version
+sudo yum update -y
+sudo yum install -y kernel
+sudo reboot
+uname -r
+

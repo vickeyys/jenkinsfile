@@ -1,0 +1,25 @@
+- name: Patch all systems
+  hosts: all
+  become: yes
+  tasks:
+    - name: Patch Ubuntu/Debian
+      apt:
+        update_cache: yes
+        upgrade: dist
+      when: ansible_os_family == "Debian"
+
+    - name: Patch RHEL/CentOS
+      yum:
+        name: '*'
+        state: latest
+      when: ansible_os_family == "RedHat"
+
+- name: Patch Windows
+  hosts: windows
+  tasks:
+    - name: Install Windows Updates
+      win_updates:
+        category_names:
+          - SecurityUpdates
+          - CriticalUpdates
+        reboot: yes

@@ -1,0 +1,20 @@
+---
+- name: upgrade 
+  hosts: linux
+  become: yes
+  tasks:
+    - name:  install update-manager-core
+      ansible.builtin.apt:
+        name: update-manager-core
+        state: present
+    - name: reboot the server
+      ansible.builtin.reboot:
+        msg: "Rebooting before OS upgrade due to pending updates"
+        reboot_timeout: 600
+    - name: upgrade os kernal
+      ansible.builtin.command:
+        cmd: do-release-upgrade -d
+    - name: reboot the server
+      ansible.builtin.reboot:
+        msg: reboot after upgrade
+        reboot_timeout: 600

@@ -1,0 +1,32 @@
+---
+- name: Patching Ubuntu and upgrading packages
+  hosts: linux
+  become: yes
+  tasks:
+    - name: Debug - Starting Ubuntu patching
+      debug:
+        msg: "Ubuntu patching started"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Apply all available upgrades
+      ansible.builtin.apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+
+- name: Patching Windows servers
+  hosts: windows
+  tasks:
+    - name: Debug - Starting Windows patching
+      debug:
+        msg: "Windows patching started"
+
+    - name: Apply Windows updates
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+          - CriticalUpdates
+        reboot: yes
