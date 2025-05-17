@@ -1,0 +1,27 @@
+---
+- name: Enable UFW and allow specific ports
+  hosts: ubuntu_servers
+  become: yes
+  vars:
+    allowed_ports:
+      - 22
+      - 80
+      - 443
+
+  tasks:
+    - name: Ensure UFW is installed
+      apt:
+        name: ufw
+        state: present
+        update_cache: yes
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: deny
+
+    - name: Allow specified ports through UFW
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop: "{{ allowed_ports }}"
