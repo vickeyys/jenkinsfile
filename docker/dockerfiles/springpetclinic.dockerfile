@@ -40,7 +40,7 @@ EXPOSE 4200
 
 CMD ["ng", "serve", "--host", "0.0.0.0"]
 
-# this is dockerfile for .netcore nop ecoomerece project
+# this is dockerfile for .netcore nop ecoomerece project --- the class link is - https://directdevops.blog/2022/11/13/devops-classroomnotes-13-nov-2022/
 
 # Stage 1: Download and unzip nopCommerce
 FROM ubuntu:22.04 AS unzip
@@ -53,7 +53,7 @@ RUN apt-get update && \
     unzip nopCommerce_4.50.3_NoSource_linux_x64.zip && \
     rm nopCommerce_4.50.3_NoSource_linux_x64.zip
 
-# Stage 2: Run with ASP.NET --- the class link is - https://directdevops.blog/2022/11/13/devops-classroomnotes-13-nov-2022/
+# Stage 2: Run with ASP.NET 
 FROM mcr.microsoft.com/dotnet/aspnet:7.0
 
 LABEL project="nopCommerce"
