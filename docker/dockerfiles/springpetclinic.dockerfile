@@ -53,7 +53,7 @@ RUN apt-get update && \
     unzip nopCommerce_4.50.3_NoSource_linux_x64.zip && \
     rm nopCommerce_4.50.3_NoSource_linux_x64.zip
 
-# Stage 2: Run with ASP.NET
+# Stage 2: Run with ASP.NET --- the class link is - https://directdevops.blog/2022/11/13/devops-classroomnotes-13-nov-2022/
 FROM mcr.microsoft.com/dotnet/aspnet:7.0
 
 LABEL project="nopCommerce"
