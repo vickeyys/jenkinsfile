@@ -1,0 +1,24 @@
+# the command to create own directory and then mount it on container while creating
+sudo docker run -d --mount type=bind,source=/home/ubuntu/vol2,target=/dbdata --name web4 ubuntu:latest sleep 1d
+
+#docker command to create and mount volume with docker create
+docker volume create vol1 
+#then attach with this
+sudo docker run -d -v vol1:/data --name web1 ubuntu:latest sleep 1d
+
+#if any container ping or ifconfig not working you have to install with this 
+apt install net-tools
+apt install iputils-ping
+
+#this two command you can use to ping from web2 to other container name and also from ip
+docker exec web2 ping 192.168.0.2
+docker exec web2 ping web3
+
+#create your own bridge network with your subnet
+docker network create  --subnet=192.168.0.0/24 my-bridge2
+#create container with specific network
+docker run -d --network my-bridge2 --name web2 ubuntu:latest sleep 1d
+
+-------------------
+
+# 
