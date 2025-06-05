@@ -9,7 +9,7 @@ CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
 
 
 
-// below dockerfile is for installing the petclinic application
+# below dockerfile is for installing the petclinic application of single
 
 FROM ubuntu:22.04
 
@@ -24,7 +24,35 @@ EXPOSE 8080
 # Run the app from the copied location
 CMD ["java", "-jar", "/app/spring-petclinic.jar"]
 
-//this is dockerfile for node js project
+# Now you will find the same petclinic with two stages
+# Stage 1: Build the app
+FROM ubuntu:22.04 AS build
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y openjdk-17-jdk maven git
+
+# Clone and build
+WORKDIR /app
+RUN git clone https://github.com/vickeyys/spring-petclinic.git
+WORKDIR /app/spring-petclinic
+RUN mvn clean package -DskipTests
+
+# Stage 2: Runtime image
+FROM openjdk:17-alpine
+
+# Create a work directory
+WORKDIR /petclinic
+
+# Copy the built jar file
+COPY --from=build /app/spring-petclinic/target/spring-petclinic-*.jar ./spring-petclinic.jar
+
+# Run the application
+CMD ["java", "-jar", "spring-petclinic.jar"]
+
+
+
+#this is dockerfile for node js project
 
 FROM node:16
 LABEL project="qtlearning"
