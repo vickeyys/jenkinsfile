@@ -1,0 +1,43 @@
+version: "3.9"
+services:
+    web:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: myimage:1.0
+        ports:
+            - 8080:80
+        volumes: 
+            - mydata:/data
+        networks:
+              mynetwork:
+                ipv4_address: 192.168.0.10
+        restart: always
+        container_name: web1
+        deploy:
+            replicas: 3
+        depends_on: 
+                - db
+    db:
+        image: mysql:latest
+        environment:
+            MYSQL_ROOT_PASSWORD: "admin"
+            MYSQL_DATABASE: "mydb"
+            MYSQL_USER: "myuser"
+            MYSQL_PASSWORD: "admin"
+        ports:
+            - "3306:3306"
+        volumes: 
+            - type: bind
+              source: ./sqldata
+              target: /dbdata
+        restart: always
+volumes:
+    mydata:
+    sqldata:
+networks:
+    mynetwork:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 192.168.0.0/16
