@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petclinic-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: petclinic 
+  template:
+    metadata:
+      labels:
+        app: petclinic
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+      containers:
+        - name: pet-server
+          image: 476114139245.dkr.ecr.us-east-1.amazonaws.com/petclinic:v1
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 200Mi
+          ports:
+            - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: petclinic-service
+spec:
+  type: ClusterIP
+  selector:
+    app: petclinic
+  ports:
+    - name: petport 
+      port: 8080
+      targetPort: 8080
