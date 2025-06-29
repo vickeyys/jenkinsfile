@@ -1,0 +1,64 @@
+# deny all incoming on cart service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-to-apache
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: cart
+  policyTypes:
+  - Ingress
+--- 
+# deny all incoming on order service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-to-nginx
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: order
+  policyTypes:
+  - Ingress
+--- 
+# deny from cart to order
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-cart-to-orders
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: orders
+  ingress:
+  - from:
+    - podSelector:
+        matchExpressions:
+        - key: app
+          operator: NotIn
+          values:
+          - cart
+--- 
+# deny from order to card
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-cart-to-orders
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: orders       # Target: orders
+  ingress:
+  - from:
+    - podSelector:
+        matchExpressions:
+        - key: app
+          operator: NotIn
+          values:
+          - cart         # Deny ingress FROM cart pods
+
