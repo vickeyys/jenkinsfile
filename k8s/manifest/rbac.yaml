@@ -1,0 +1,79 @@
+
+# First you need to come to the path where you openssl.exe present, after that in first step generate the private key in any folder you want.
+openssl genrsa -out vishal-user.key 2048  
+
+# by using this private key you have to generate csr
+
+openssl req -new -key vishal-user.key -out vishal-user.csr -subj "/CN=vishal-user/O=dev-team"
+
+# then by using this csr you have to generate signed certificate
+
+.\openssl.exe x509 -req -in D:\kind\vishal-user.csr `
+  -CA D:\kind\certs\ca.crt `
+  -CAkey D:\kind\certs\ca.key `
+  -CAcreateserial `
+  -out D:\kind\vishal-user.crt `
+  -days 365
+
+# Now after this check that you have correct CN and O means user and group
+
+openssl x509 -in D:\kind\vishal-user.crt -noout –subject
+
+
+
+
+
+# kube config file for user vishal-user 
+
+apiVersion: v1
+kind: config
+clusters:
+  - name: kind-multinode
+    cluster: 
+      certificate-authority: D:/kind/certs/ca.crt
+      server: https://127.0.0.1:49784
+users: 
+  - name: vishal-user
+    user: 
+      client-certificate: D:/kind/vishal-user.crt
+      client-key: D:/kind/vishal-user.key
+contexts:
+  - name: vishal-user@kind-multinode
+    context:
+      cluster: kind-multinode
+      user: vishal-user
+current-context: vishal-user@kind-multinode
+
+---
+ 
+# roles 
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: role
+metadata:
+  namespace: default
+  name: developers
+rules:
+  - apiGroup: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroup: [""]
+    resources: ["deployments"]
+    verbs: ["create", "delete"]
+
+--- 
+# role binding
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: developers-role-binding
+  namespace: default
+subjects:
+  - kind: group
+    name: dev-team
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  - kind: role
+    name: developers
+    apiGroup: rbac.authorization.k8s.io
