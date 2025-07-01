@@ -1,0 +1,111 @@
+# prerequistes for pvc
+# 1 Your Kubernetes nodes (at least the worker node where the pod will run) must be EC2 instances in the same region and AZ as the EBS volume.
+# 2  Nodes must have the right IAM permissions if you plan to dynamically provision EBS volumes (via StorageClass), for this look below process
+# Create IAM Policy
+This gives permission to manage EBS volumes.
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachVolume",
+        "ec2:CreateVolume",
+        "ec2:DeleteVolume",
+        "ec2:DescribeInstances",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DetachVolume"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+
+b) Create IAM Role
+•	Go to IAM → Roles → Create Role
+•	Trusted entity: Select EC2
+•	Attach the policy you created
+•	Give it a name like K8sEBSCSIRole
+
+(c) Attach IAM Role to Worker EC2s
+For each worker node:
+•	Go to EC2 → Instances → Select worker node
+•	Click Actions → Security → Modify IAM Role
+•	Attach the role (K8sEBSCSIRole) to each EC2 worker node
+3 You must be using the EBS CSI driver: for this step follow the below step
+The EBS CSI driver allows your AWS EKS pods to use Amazon EBS volumes as Persistent Volumes (PVs).
+
+
+---
+# dynamic storage provisioning
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: sql-sci
+provisoner: ebs.sci.aws.com
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: gp3
+  fsType: ext4
+
+---
+
+# Note: - in this above file provisioner is used to tell sci to create ebs volume, now just like CNI that is responsible for networking stuff, SCI (storage container interface) is used for storage stuff like pvc, 
+
+# This field volumeBindingMode: WaitForFirstConsumer is use to ensure that ebs will create in the same az where node or pod resides so with this it will wait till pod created and then volume will create.
+
+# The next field is parameter this field is also a k8s based field and only use in this storage based things so here we tell that type is gp2 and format it with ext4
+
+--- 
+# create PVC
+apiVersion: storage.k8s.io/v1
+kind: PersistentVolumeClaim
+metadata: 
+  name: sql-pvc
+spec:
+  accessModes: 
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: sql-sci
+
+--- 
+# bind PVC in deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: mssql-deployment
+spec: 
+  replicas: 2
+  selector:
+    matchLabels:
+      name: mssql
+  template: 
+    metadata:
+      labels: 
+        app: mssql
+    spec:
+      containers:
+        - name: mssql-con1
+          image: mcr.microsoft.com/mssql/server:2019-latest
+          ports:
+            - containerPort: 3306
+          env:
+           - name: ACCEPT_EULA
+             value: "Y"
+           - name: SA_PASSWORD
+             value: "YourStrong!Passw0rd"
+          volumeMounts:
+            - mountPath: /var/pot/mssql
+              name: mssql-volume
+          volumes: 
+            - name: mssql-volume
+              PersistentVolumeClaim:
+                claimName: sql-pvc
+            
+
+
+  
