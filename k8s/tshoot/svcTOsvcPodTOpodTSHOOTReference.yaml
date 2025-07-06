@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: network-troubleshooting-checklist
+  namespace: kube-system
+data:
+  checklist: |
+    # Kubernetes Pod-to-Pod/Service Connectivity Checklist
+
+    1. Check Pod Status
+       - kubectl get pods -o wide
+
+    2. Check DNS Resolution (if using service names)
+       - kubectl exec -it <source-pod> -- nslookup <service-name>
+       - kubectl exec -it <source-pod> -- ping <service-name>
+
+    3. Check Direct Pod IP Reachability
+       - kubectl exec -it <source-pod> -- ping <target-pod-ip>
+       - kubectl exec -it <source-pod> -- curl <target-pod-ip>:<port>
+
+    4. Check Service Endpoints
+       - kubectl get endpoints <service-name>
+
+    5. Check NetworkPolicy (if any)
+       - kubectl get networkpolicy
+       - kubectl describe networkpolicy <name>
+
+    6. Check Port Listening in Target Pod
+       - kubectl exec -it <target-pod> -- netstat -tulnp
+       - kubectl exec -it <target-pod> -- curl localhost:<port>
+
+    7. Check Pod Logs
+       - kubectl logs <source-pod>
+       - kubectl logs <target-pod>
+
+    8. Check if CNI Plugin Pods are Running
+       - kubectl get pods -n kube-system
+
+    9. (Optional) Capture Traffic
+       - kubectl exec -it <target-pod> -- tcpdump -i any port <port>
+
+    10. (Optional) Port Forward for External Access
+        - kubectl port-forward svc/<service-name> 8080:<port>
+
