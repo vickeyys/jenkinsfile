@@ -1,30 +1,55 @@
 version: "3.9"
+
 services:
-    web:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        image: myimage:1.0
-        ports:
-            - 8080:80
-        volumes: 
-            - mydata:/data
-        networks:
-              mynetwork:
-                ipv4_address: 192.168.0.10
-        restart: always
-        container_name: web1
-        deploy:
-            replicas: 3
-            resources:
-                llimits:
-                    cpus: "0.50" # Max 50% of 1 CPU
-                    memory: 512M # Max 512 MB RAM
-                reservations:
-                    cpus: "0.25" # Reserve 25% of 1 CPU
-                    memory: 256M # Reserve 256 MB RAM
-        depends_on: 
-                - db
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: myapp:v1
+    ports: 
+      - "8080:80"
+    volumes:
+      - mydata:/data
+    networks:
+      mynetwork:
+    env_file:
+      - my.env
+    restart: always
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: any
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      retries: 3
+      timeout: 5s
+
+networks:
+  mynetwork:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.0.0/16
+
+volumes:
+  mydata:
+  depends_on: - db
     db:
         image: mysql:latest
         environment:
