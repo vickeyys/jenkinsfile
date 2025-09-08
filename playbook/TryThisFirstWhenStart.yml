@@ -1,0 +1,56 @@
+---
+- name: Install Apache on both Ubuntu and RedHat
+  hosts: all
+  become: yes
+
+  tasks:
+    # -------------------------------
+    # Debian/Ubuntu family
+    # -------------------------------
+    - name: Install Apache2 on Ubuntu/Debian
+      ansible.builtin.apt:
+        name: apache2
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Start and enable Apache2 on Ubuntu/Debian
+      ansible.builtin.service:
+        name: apache2
+        state: started
+        enabled: true
+      when: ansible_os_family == "Debian"
+
+    - name: Copy index.html on Ubuntu/Debian
+      ansible.builtin.copy:
+        src: /home/ubuntu/index.html
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: '0644'
+      when: ansible_os_family == "Debian"
+
+    # -------------------------------
+    # RedHat/CentOS family
+    # -------------------------------
+    - name: Install Apache (httpd) on RedHat
+      ansible.builtin.yum:
+        name: httpd
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Start and enable httpd on RedHat
+      ansible.builtin.service:
+        name: httpd
+        state: started
+        enabled: true
+      when: ansible_os_family == "RedHat"
+
+    - name: Copy index.html on RedHat
+      ansible.builtin.copy:
+        src: /home/ubuntu/index.html
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: '0644'
+      when: ansible_os_family == "RedHat"
