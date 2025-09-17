@@ -1,3 +1,5 @@
+##### This is policy of creating s3 bucket, one user called "anil" and then attach the s3 policy to him ####
+
 terraform {
   required_providers {
     aws = {
