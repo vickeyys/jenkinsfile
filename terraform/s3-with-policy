@@ -1,0 +1,47 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_s3_bucket" "mybucket" {
+  bucket = "mybucket123"
+
+  versioning {
+    enabled = true
+  }
+
+  tags = {
+    Name = "mybucket123"
+  }
+}
+
+resource "aws_iam_policy" "s3access" {
+  name        = "s3access"
+  description = "Policy that allows S3 read/write access"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.mybucket.arn,
+          "${aws_s3_bucket.mybucket.arn}/*"
+        ]
+      }
+    ]
+  })
+}
