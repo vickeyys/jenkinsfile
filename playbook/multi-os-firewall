@@ -1,0 +1,86 @@
+---
+- name: Enable UFW and allow ports (Ubuntu/Debian)
+  hosts: ubuntu
+  become: yes
+  vars:
+    ports:
+      - 80
+      - 22
+      - 443
+
+  tasks:
+    - name: Install UFW
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+        update_cache: yes
+
+    - name: Allow required ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop: "{{ ports }}"
+
+    - name: Enable UFW with default deny policy
+      community.general.ufw:
+        state: enabled
+        policy: deny
+
+
+- name: Enable firewalld and allow ports (RHEL/Amazon)
+  hosts: rhel
+  become: yes
+  vars:
+    ports:
+      - 22
+      - 80
+      - 443
+
+  tasks:
+    - name: Install firewalld
+      ansible.builtin.yum:
+        name: firewalld
+        state: present
+
+    - name: Start and enable firewalld service
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Allow required ports
+      ansible.posix.firewalld:
+        port: "{{ item }}/tcp"
+        permanent: yes
+        immediate: yes
+        state: enabled
+      loop: "{{ ports }}"
+
+    - name: Ensure public zone is enabled
+      ansible.posix.firewalld:
+        zone: public
+        state: enabled
+        permanent: yes
+
+
+- name: Configure Windows Firewall
+  hosts: windows
+  vars:
+    allow_ports:
+      - name: SSH
+        port: 22
+      - name: HTTP
+        port: 80
+      - name: HTTPS
+        port: 443
+
+  tasks:
+    - name: Allow ports through Windows Firewall
+      ansible.windows.win_firewall_rule:
+        name: "{{ item.name }}"
+        localport: "{{ item.port }}"
+        protocol: tcp
+        action: allow
+        direction: in
+        state: present
+      loop: "{{ allow_ports }}"
