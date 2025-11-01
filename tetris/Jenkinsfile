@@ -1,0 +1,118 @@
+pipeline {
+    agent any
+
+    tools {
+        jdk "jdk"
+        nodejs "nodejs"
+    }
+
+    environment {
+        IMAGE_NAME   = "vickeys/tetris"
+        IMAGE_TAG    = "v1-${BUILD_NUMBER}"
+        FULL_IMAGE   = "${IMAGE_NAME}:${IMAGE_TAG}"
+        SCANNER_HOME = tool 'sonar-scanner'
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_DEFAULT_REGION     = "us-east-1"    // change if needed
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git url: "https://github.com/vickeyys/End-to-End-Kubernetes-DevSecOps-Tetris-Project.git",
+                    branch: "master"
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir('Tetris-V2') {
+                    withSonarQubeEnv('Sonar') {
+                        sh '''
+                            $SCANNER_HOME/bin/sonar-scanner \
+                            -Dsonar.projectKey=Tetrisv1 \
+                            -Dsonar.projectName=Tetris \
+                            -Dsonar.sources=.
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: false
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('Tetris-V2') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    dir('Tetris-V2') {
+                        // Build Docker image
+                        sh """
+                            docker build -t ${FULL_IMAGE} .
+                        """
+
+                        // Login and Push
+                        withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            sh '''
+                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                                docker push ${FULL_IMAGE}
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh 'trivy image --no-progress --format table -o trivy-report.txt ${FULL_IMAGE}'
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                script {
+                    echo "Configuring EKS context..."
+                    sh '''
+                        aws eks update-kubeconfig --name eks-cluster --region ${AWS_DEFAULT_REGION}
+                    '''
+
+                    echo "Applying Kubernetes manifests..."
+                    sh 'kubectl apply -f Manifest-file/deployment-service.yml'
+
+                    echo "Updating image to latest build..."
+                    sh '''
+                        kubectl set image deployment/tetris tetris=${FULL_IMAGE} --record
+                        kubectl rollout status deployment/tetris
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo "⚠️ Deployment failed — rolling back..."
+            sh '''
+                kubectl rollout undo deployment/tetris || echo "Rollback failed or deployment not found."
+            '''
+        }
+        success {
+            echo "✅ Pipeline executed successfully — Tetris deployed to EKS!"
+        }
+    }
+}
