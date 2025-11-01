@@ -1,0 +1,91 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: ['plan', 'apply', 'destroy'],
+            description: 'Select Terraform action to perform on EKS'
+        )
+    }
+
+    environment {
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        TF_WORKSPACE          = 'default'
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                echo "📦 Checking out Terraform repository..."
+                git branch: 'main', url: 'https://github.com/vickeyys/terraform-projects.git'
+            }
+        }
+
+        // -----------------------------
+        // STEP 1: Initialize Terraform for EKS
+        // -----------------------------
+        stage('Terraform Init for EKS') {
+            steps {
+                dir('eks') {
+                    echo "🚀 Initializing Terraform for EKS..."
+                    sh '''
+                        terraform init -input=false
+                    '''
+                }
+            }
+        }
+
+        // -----------------------------
+        // STEP 2: Validate Terraform
+        // -----------------------------
+        stage('Terraform Validate') {
+            steps {
+                dir('eks') {
+                    sh 'terraform validate'
+                }
+            }
+        }
+
+        // -----------------------------
+        // STEP 3: Plan / Apply / Destroy EKS
+        // -----------------------------
+        stage('Terraform Plan/Apply/Destroy EKS') {
+            steps {
+                dir('eks') {
+                    script {
+                        if (params.ACTION == 'plan') {
+                            echo "🧾 Running Terraform plan..."
+                            sh 'terraform plan -out=tfplan'
+                        }
+                        else if (params.ACTION == 'apply') {
+                            input message: "✅ Approve to APPLY EKS changes?"
+                            sh '''
+                                terraform plan -out=tfplan
+                                terraform apply -auto-approve tfplan
+                            '''
+                        }
+                        else if (params.ACTION == 'destroy') {
+                            input message: "⚠️ Confirm to DESTROY EKS resources?"
+                            sh 'terraform destroy -auto-approve'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Terraform ${params.ACTION} completed successfully!"
+        }
+        failure {
+            echo "❌ Terraform ${params.ACTION} failed!"
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
