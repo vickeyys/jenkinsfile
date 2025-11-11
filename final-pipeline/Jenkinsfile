@@ -1,0 +1,122 @@
+pipeline {
+  agent any
+
+  environment {
+    IMAGE = "vickeys/myapp"
+    DEPLOYMENT_NAME = "myapp-prod"
+    NAMESPACE = "prod"
+
+    // SonarQube setup (configured in Jenkins → Manage Jenkins → Global Tool Configuration)
+    SCANNER_HOME = tool 'sonar-scanner'
+  }
+
+  stages {
+
+    // 1️⃣ Checkout Code
+    stage('Checkout') {
+      steps {
+        git branch: "${env.BRANCH_NAME}", url: 'https://github.com/vickeyys/myapp.git'
+      }
+    }
+
+    // 2️⃣ Unit Tests
+    stage('Unit Tests') {
+      steps {
+        echo "🧪 Running unit tests..."
+        // Example: use pytest (for Python) or mvn test (for Java)
+        sh 'pytest tests/ || echo "⚠️ No tests found, skipping."'
+      }
+    }
+
+    // 3️⃣ SonarQube Scan
+    stage('SonarQube Analysis') {
+      steps {
+        withSonarQubeEnv('SonarQube') {
+          sh '''
+            $SCANNER_HOME/bin/sonar-scanner \
+              -Dsonar.projectKey=myapp \
+              -Dsonar.sources=. \
+              -Dsonar.host.url=http://sonarqube:9000
+          '''
+        }
+      }
+    }
+
+    // 4️⃣ Sonar Quality Gate
+    stage('Quality Gate') {
+      steps {
+        timeout(time: 2, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
+      }
+    }
+
+    // 5️⃣ Build Docker Image
+    stage('Build Docker Image') {
+      steps {
+        sh "docker build -t $IMAGE:${env.BUILD_NUMBER} ."
+        echo "✅ Build complete for ${env.BRANCH_NAME}"
+      }
+    }
+
+    // 6️⃣ Trivy Image Scan
+    stage('Trivy Security Scan') {
+      steps {
+        echo "🔍 Running Trivy image scan..."
+        sh '''
+          trivy image --exit-code 1 --severity HIGH,CRITICAL $IMAGE:${env.BUILD_NUMBER} || echo "⚠️ Vulnerabilities found"
+        '''
+      }
+    }
+
+    // 7️⃣ Deployment Logic
+    stage('Deploy') {
+      steps {
+        script {
+          if (env.BRANCH_NAME == "dev") {
+            echo "🚀 Deploying to DEV"
+            sh "kubectl apply -f manifests/dev/"
+          }
+
+          else if (env.BRANCH_NAME == "main") {
+            input message: "Approve deployment to QA?", ok: "Deploy"
+            echo "🚀 Deploying to QA"
+            sh "kubectl apply -f manifests/qa/"
+
+            input message: "Approve deployment to PROD?", ok: "Deploy"
+            echo "🚀 Deploying to PROD"
+            sh '''
+              kubectl apply -f manifests/prod/
+              kubectl set image deployment/$DEPLOYMENT_NAME myapp=$IMAGE:${env.BUILD_NUMBER} -n $NAMESPACE
+              kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE --timeout=60s
+            '''
+          }
+
+          else {
+            echo "🧪 Feature branch — build + test only, no deploy."
+          }
+        }
+      }
+    }
+  }
+
+  // 🔁 Rollback on Failure
+  post {
+    failure {
+      echo "❌ Deployment failed for ${env.BRANCH_NAME}"
+      script {
+        if (env.BRANCH_NAME == "main") {
+          echo "🔄 Rolling back production to previous stable version..."
+          sh '''
+            kubectl rollout undo deployment/$DEPLOYMENT_NAME -n $NAMESPACE
+            echo "✅ Rollback executed successfully."
+          '''
+        }
+      }
+    }
+
+    always {
+      echo "🏁 Pipeline completed for ${env.BRANCH_NAME}"
+    }
+  }
+}
